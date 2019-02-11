@@ -53,6 +53,7 @@
 char *save_token(char *token, bool esc, struct parser_state *st)
 {
 	struct token_tab *tokp, *new_tok;
+	size_t size;
 
 	for (tokp = st->root_node->tokens;
 	     tokp != NULL;
@@ -60,8 +61,8 @@ char *save_token(char *token, bool esc, struct parser_state *st)
 		if (strcasecmp(token, tokp->token) == 0)
 			return tokp->token;
 	}
-	new_tok = gsh_calloc(1, (sizeof(struct token_tab) +
-				 strlen(token) + 1));
+	size = strlen(token) + 1;
+	new_tok = gsh_calloc(1, (sizeof(struct token_tab) + size));
 	if (new_tok == NULL)
 		return NULL;
 	if (esc) {
@@ -99,7 +100,7 @@ char *save_token(char *token, bool esc, struct parser_state *st)
 	} else {
 		if (*token == '\'')  /* skip and chomp "'" in an SQUOTE */
 			token++;
-		strcpy(new_tok->token, token);
+		strlcpy(new_tok->token, token, size);
 		if (new_tok->token[strlen(new_tok->token) - 1] == '\'')
 			new_tok->token[strlen(new_tok->token) - 1] = '\0';
 	}

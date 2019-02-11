@@ -398,19 +398,23 @@ static int new_file(char *name_tok,
 	struct config_root *confroot = st->root_node;
 	char *fullpath = NULL;
 	int rc = ENOMEM;
-	char *filename = alloca(strlen(name_tok) + 1);
+	size_t size;
+	size = strlen(name_tok) + 1;
+	char *filename = alloca(size);
 
 	if (*name_tok == '\"') {
 		strcpy(filename, name_tok + 1);
 		filename[strlen(filename) - 1] = '\0';
 	} else {
-		strcpy(filename, name_tok); /* alloca'd memory freed on exit */
+		/* alloca'd memory freed on exit */
+		strlcpy(filename, name_tok, size);
 	}
 	if (confroot->files == NULL) {
 		if (filename[0] == '/') {
-			char *path = alloca(strlen(filename) + 1);
+			size = strlen(filename) + 1;
+			char *path = alloca(size);
 
-			strcpy(path, filename);
+			strlcpy(path, filename, size);
 			confroot->conf_dir = gsh_strdup(dirname(path));
 		} else {
 			confroot->conf_dir = gsh_strdup(".");
@@ -419,10 +423,12 @@ static int new_file(char *name_tok,
 	if (filename[0] == '/') {
 		fullpath = gsh_strdup(filename);
 	} else {
-		fullpath = gsh_malloc(strlen(filename) +
-				      strlen(confroot->conf_dir) + 2);
+		size = strlen(filename) +
+                	strlen(confroot->conf_dir) + 2;
+		fullpath = gsh_malloc(size);
 
-		sprintf(fullpath, "%s/%s", confroot->conf_dir, filename);
+		snprintf(fullpath, size, "%s/%s",
+			 confroot->conf_dir, filename);
 	}
 	/* loop detection */
 	for (fp = confroot->files; fp != NULL; fp = fp->next) {
