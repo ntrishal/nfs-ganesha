@@ -367,8 +367,7 @@ fsal_status_t mdcache_pkginit(void)
  */
 bool mdcache_lru_fds_available(void)
 {
-	if ((atomic_fetch_size_t(&open_fd_count) >= lru_state.fds_hard_limit)
-		&& lru_state.caching_fds) {
+	if (atomic_fetch_size_t(&open_fd_count) >= lru_state.fds_hard_limit) {
 		LogCrit(COMPONENT_CACHE_INODE_LRU,
 			"FD Hard Limit Exceeded.  Disabling FD Cache and waking LRU thread.");
 		lru_state.caching_fds = false;

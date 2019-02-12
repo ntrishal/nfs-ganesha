@@ -718,6 +718,7 @@ lru_try_reap_entry(void)
 	if (!lru)
 		lru = lru_reap_impl(LRU_ENTRY_L1);
 
+	LogFullDebug(COMPONENT_CACHE_INODE_LRU, "Reaping entries");
 	return lru;
 }
 
@@ -1280,9 +1281,8 @@ lru_run(struct fridgethr_context *ctx)
 
 	fds_avg = (lru_state.fds_hiwat - lru_state.fds_lowat) / 2;
 
-	if (mdcache_param.use_fd_cache)
-		extremis = (atomic_fetch_size_t(&open_fd_count) >
-			    lru_state.fds_hiwat);
+	extremis = (atomic_fetch_size_t(&open_fd_count) >
+		    lru_state.fds_hiwat);
 
 	LogFullDebug(COMPONENT_CACHE_INODE_LRU, "LRU awakes.");
 
