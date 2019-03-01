@@ -80,7 +80,10 @@
 #include "sal_data.h"
 #include "nfs_init.h"
 #include "mdcache.h"
-
+#ifdef USE_DBUS
+#include "gsh_dbus.h"
+#endif
+#include "server_stats_private.h"
 
 #ifdef USE_BLKID
 static struct blkid_struct_cache *cache;
@@ -1602,6 +1605,119 @@ out:
 	PTHREAD_RWLOCK_unlock(&fs_lock);
 	return retval;
 }
+
+#ifdef USE_DBUS
+
+/* DBUS helpers
+ */
+
+struct showfs_state {
+	DBusMessageIter fs_iter;
+};
+
+static bool get_posix_fs_dev_ids(struct fsal_filesystem *fs, void *state)
+{
+	uint64_t val;
+	struct showfs_state *iter_state =
+		(struct showfs_state *)state;
+	DBusMessageIter struct_iter;
+	char *path;
+
+	dbus_message_iter_open_container(&iter_state->fs_iter,
+					 DBUS_TYPE_STRUCT, NULL, &struct_iter);
+
+	path = (fs->path != NULL) ? fs->path : "";
+
+	dbus_message_iter_append_basic(&struct_iter,
+				       DBUS_TYPE_STRING,
+				       &path);
+
+	val = fs->dev.major;
+
+	dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_UINT64,
+				       &val);
+	val = fs->dev.minor;
+
+	dbus_message_iter_append_basic(&struct_iter, DBUS_TYPE_UINT64,
+				       &val);
+	dbus_message_iter_close_container(&iter_state->fs_iter,
+					  &struct_iter);
+
+	return true;
+}
+
+ /**
+  * @brief Dbus method for showing dev ids of filesystems cache
+  *
+  * @param[in]  args
+  * @param[out] reply
+  */
+static bool posix_showfs(DBusMessageIter *args,
+			 DBusMessage *reply,
+			 DBusError *error)
+{
+	DBusMessageIter iter;
+	struct showfs_state iter_state;
+	struct timespec timestamp;
+	struct fsal_filesystem *fs;
+	struct glist_head *glist;
+
+	now(&timestamp);
+	PTHREAD_RWLOCK_rdlock(&fs_lock);
+	/* create a reply from the message */
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_append_timestamp(&iter, &timestamp);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+					 "(stt)",
+					 &iter_state.fs_iter);
+
+	/* Traverse POSIX file systems to display dev ids */
+	glist_for_each(glist, &posix_file_systems) {
+		fs = glist_entry(glist, struct fsal_filesystem, filesystems);
+		get_posix_fs_dev_ids(fs, (void *)&iter_state);
+	}
+	dbus_message_iter_close_container(&iter, &iter_state.fs_iter);
+	PTHREAD_RWLOCK_unlock(&fs_lock);
+	return true;
+}
+
+static struct gsh_dbus_method fsmgr_show_fs = {
+	.name = "ShowFileSys",
+	.method = posix_showfs,
+	.args = {TIMESTAMP_REPLY,
+		 {
+		  .name = "filesyss",
+		  .type = "a(stt)",
+		  .direction = "out"},
+		END_ARG_LIST}
+};
+
+static struct gsh_dbus_method *fsmgr_fs_methods[] = {
+	&fsmgr_show_fs,
+	NULL
+};
+
+static struct gsh_dbus_interface fsmgr_table = {
+	.name = "org.ganesha.nfsd.filesysmgr",
+	.props = NULL,
+	.methods = fsmgr_fs_methods,
+	.signals = NULL
+};
+/* DBUS list of interfaces on /org/ganesha/nfsd/FileSysMgr
+ */
+
+static struct gsh_dbus_interface *fsmgr_interfaces[] = {
+	&fsmgr_table,
+	NULL
+};
+
+void dbus_fs_init(void)
+{
+	gsh_dbus_register_path("FileSysMgr", fsmgr_interfaces);
+}
+
+#endif                          /* USE_DBUS */
+
 
 int encode_fsid(char *buf,
 		int max,
