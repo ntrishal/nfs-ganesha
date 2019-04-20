@@ -65,12 +65,15 @@
 #include "nfs_proto_functions.h"
 #include "pnfs_utils.h"
 #include "nfs_req_queue.h"
+#include "idmapper.h"
 
 struct timespec nfs_stats_time;
 struct timespec fsal_stats_time;
 struct timespec rpc_stats_time;
 struct timespec v3_full_stats_time;
 struct timespec v4_full_stats_time;
+struct timespec auth_stats_time;
+
 /**
  * @brief Exports are stored in an AVL tree with front-end cache.
  *
@@ -1847,6 +1850,7 @@ static bool stats_reset(DBusMessageIter *args,
 	reset_fsal_stats();
 	reset_rpcq_stats();
 	reset_server_stats();
+	reset_auth_stats();
 
 	return true;
 }
@@ -1964,7 +1968,7 @@ static bool stats_status(DBusMessageIter *args,
 	bool success = true;
 	char *errormsg = "OK";
 	DBusMessageIter iter, nfsstatus, fsalstatus, rpcstatus;
-	DBusMessageIter v3_full_status, v4_full_status;
+	DBusMessageIter v3_full_status, v4_full_status, authstatus;
 	dbus_bool_t value;
 
 	dbus_message_iter_init_append(reply, &iter);
@@ -2012,6 +2016,14 @@ static bool stats_status(DBusMessageIter *args,
 	dbus_append_timestamp(&v4_full_status, &v4_full_stats_time);
 	dbus_message_iter_close_container(&iter, &v4_full_status);
 
+	/* Send info about auth stats */
+        dbus_message_iter_open_container(&iter, DBUS_TYPE_STRUCT, NULL,
+                                         &authstatus);
+        value = nfs_param.core_param.enable_AUTHSTATS;
+        dbus_message_iter_append_basic(&authstatus, DBUS_TYPE_BOOLEAN,
+                                        &value);
+        dbus_append_timestamp(&authstatus, &auth_stats_time);
+        dbus_message_iter_close_container(&iter, &authstatus);
 	return true;
 }
 
@@ -2157,6 +2169,7 @@ static bool stats_disable(DBusMessageIter *args,
 		nfs_param.core_param.enable_RPCSTATS = false;
 		nfs_param.core_param.enable_FULLV3STATS = false;
 		nfs_param.core_param.enable_FULLV4STATS = false;
+		nfs_param.core_param.enable_AUTHSTATS = false;
 		disable_sendq_stats();
 		LogEvent(COMPONENT_CONFIG,
 			 "Disabling NFS server statistics counting");
@@ -2169,6 +2182,10 @@ static bool stats_disable(DBusMessageIter *args,
 		reset_rpcq_stats();
 		/* resetting server stats includes v3_full & v4_full stats */
 		reset_server_stats();
+		LogEvent(COMPONENT_CONFIG,
+                         "Disabling auth statistics counting");
+		 /* reset auth counters */
+                reset_auth_stats();
 	}
 	if (strcmp(stat_type, "nfs") == 0) {
 		nfs_param.core_param.enable_NFSSTATS = false;
@@ -2208,7 +2225,13 @@ static bool stats_disable(DBusMessageIter *args,
 		/* reset v4_full stats counters */
 		reset_v4_full_stats();
 	}
-
+	if (strcmp(stat_type, "auth") == 0) {
+                nfs_param.core_param.enable_AUTHSTATS = false;
+                LogEvent(COMPONENT_CONFIG,
+                         "Disabling auth statistics counting");
+                /* reset auth counters */
+                reset_auth_stats();
+        }
 	dbus_status_reply(&iter, success, errormsg);
 	now(&timestamp);
 	dbus_append_timestamp(&iter, &timestamp);
@@ -2273,6 +2296,13 @@ static bool stats_enable(DBusMessageIter *args,
 				 "Enabling NFSv4 Detailed statistics counting");
 			now(&v4_full_stats_time);
 		}
+		if (!nfs_param.core_param.enable_AUTHSTATS) {
+                        nfs_param.core_param.enable_AUTHSTATS = true;
+                        LogEvent(COMPONENT_CONFIG,
+                                 "Enabling auth statistics counting");
+                        now(&auth_stats_time);
+                }
+
 	}
 	if (strcmp(stat_type, "nfs") == 0 &&
 			!nfs_param.core_param.enable_NFSSTATS) {
@@ -2320,6 +2350,13 @@ static bool stats_enable(DBusMessageIter *args,
 			now(&v4_full_stats_time);
 		}
 	}
+	if (strcmp(stat_type, "auth") == 0 &&
+                        !nfs_param.core_param.enable_AUTHSTATS) {
+                nfs_param.core_param.enable_AUTHSTATS = true;
+                LogEvent(COMPONENT_CONFIG,
+                         "Enabling auth statistics counting");
+                now(&auth_stats_time);
+        }
 
 	dbus_status_reply(&iter, success, errormsg);
 	now(&timestamp);
@@ -2609,6 +2646,7 @@ static struct gsh_dbus_method *export_stats_methods[] = {
 	&RPC_stats,
 	&v3_full_statistics,
 	&v4_full_statistics,
+	&auth_statistics,
 	NULL
 };
 

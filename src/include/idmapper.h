@@ -78,6 +78,8 @@ bool xdr_encode_nfs4_group(XDR *, gid_t);
 bool name2uid(const struct gsh_buffdesc *, uid_t *, const uid_t);
 bool name2gid(const struct gsh_buffdesc *, gid_t *, const gid_t);
 
+void winbind_stats_update(struct timespec *, struct timespec *);
+void gc_stats_update(struct timespec *, struct timespec *);
 #ifdef _HAVE_GSSAPI
 #ifdef _MSPAC_SUPPORT
 bool principal2uid(char *, uid_t *, gid_t *, struct svc_rpc_gss_data *);
@@ -86,5 +88,8 @@ bool principal2uid(char *, uid_t *, gid_t *);
 #endif
 #endif
 
+#ifdef USE_DBUS
+extern struct gsh_dbus_method auth_statistics;
+#endif
 #endif				/* IDMAPPER_H */
 /** @} */
