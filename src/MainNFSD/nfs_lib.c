@@ -112,6 +112,7 @@ int nfs_libmain(const char *ganesha_conf,
 	if (lpath)
 		log_path = gsh_strdup(lpath);
 
+	/* dont think we need DNS stats hook here*/
 	/* get host name */
 	if (gethostname(localmachine, sizeof(localmachine)) != 0) {
 		fprintf(stderr, "Could not get local host name, exiting...\n");

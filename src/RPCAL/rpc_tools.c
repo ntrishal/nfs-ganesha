@@ -58,6 +58,7 @@
 #include "nfs_exports.h"
 #include "nfs_file_handle.h"
 #include "nfs_dupreq.h"
+#include "idmapper.h"
 
 /* XXX doesn't ntirpc have an equivalent for all of the following?
  */
@@ -432,15 +433,21 @@ int ipstring_to_sockaddr(const char *str, sockaddr_t *addr)
 	struct addrinfo *info, hints, *p;
 	int rc;
 	char ipname[SOCK_NAME_MAX + 1];
+	struct timespec s_time, e_time;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_flags = AI_V4MAPPED | AI_ADDRCONFIG | AI_NUMERICHOST;
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_RAW;
 	hints.ai_protocol = 0;
+
+	now(&s_time);
 	rc = getaddrinfo(str, NULL, &hints, &info);
+	now(&e_time);
 	if (rc == 0 && info != NULL) {
 		p = info;
+		if (nfs_param.core_param.enable_AUTHSTATS)
+			dns_stats_update(&s_time, &e_time);
 		if (isFullDebug(COMPONENT_RPC)) {
 			while (p != NULL) {
 				sprint_sockip((sockaddr_t *) p->ai_addr,

@@ -245,7 +245,7 @@ struct auth_stats {
 #define AUTH_REPLY		\
 {                               \
 	.name = "auth",		\
-	.type = "a(tdddtddd)",  \
+	.type = "a(tdddtdddtddd)",  \
 	.direction = "out"      \
 }
 

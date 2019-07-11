@@ -165,6 +165,7 @@ int main(int argc, char *argv[])
 	if (*exec_name == '\0')
 		exec_name = argv[0];
 
+	/* dont think we need DNS stats hook here*/
 	/* get host name */
 	if (gethostname(localmachine, sizeof(localmachine)) != 0) {
 		fprintf(stderr, "Could not get local host name, exiting...\n");

@@ -92,6 +92,7 @@ static int fs_ng_create_recov_dir(void)
 	if (nfs_param.core_param.clustered) {
 		snprintf(host, sizeof(host), "node%d", g_nodeid);
 	} else {
+		/* do we need DNS stats hook here?*/
 		err = gethostname(host, sizeof(host));
 		if (err) {
 			LogEvent(COMPONENT_CLIENTID,
