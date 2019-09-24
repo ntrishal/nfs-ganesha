@@ -578,12 +578,18 @@ static int add_client(struct glist_head *client_list,
 		}
 		break;
 	default:
+		/* Skipped only for below vague error currently*/
+
+		/*Do we want to skip all the other specific errors as well in the function?
+  		If we continue and go ahead and do the export for them, the admin may/may not 
+		notice these errors in the log. And till they are accessed and reported by the
+		particular client the problem might not come to the fore. If the export is not seen
+                in the exports at all there might be higher chance of seeing the issue upfront?*/
 		config_proc_error(cnode, err_type,
 				  "Expected a client, got a %s for (%s)",
 				  config_term_desc(type_hint),
 				  client_tok);
-		err_type->bogus = true;
-		errcnt++;
+		err_type->dispose = true;
 		goto out;
 	}
 	cli->client_perms = *perms;
