@@ -206,6 +206,10 @@ state_status_t state_share_remove(cache_entry_t *entry,
 	old_entry_share_access = state_share_get_share_access(entry);
 	old_entry_share_deny = state_share_get_share_deny(entry);
 
+	if ((old_entry_share_access == 0) &&
+	    (old_entry_share_deny == 0))
+		return status;
+
 	/* Share state to be removed. */
 	removed_share_access = state->state_data.share.share_access;
 	removed_share_deny = state->state_data.share.share_deny;
